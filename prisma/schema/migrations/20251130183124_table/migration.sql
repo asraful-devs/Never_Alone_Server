@@ -41,7 +41,7 @@ CREATE TABLE "admins" (
     "name" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "profilePhoto" TEXT,
-    "contactNumber" TEXT NOT NULL,
+    "contactNumber" TEXT,
     "isDeleted" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
