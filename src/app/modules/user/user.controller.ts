@@ -47,8 +47,7 @@ const GetSingleUser = catchAsync(async (req: Request, res: Response) => {
 // Update User Controller
 const UpdateUser = catchAsync(async (req: Request, res: Response) => {
     const id = req.params.id;
-    const payload = req.body;
-    const result = await UserService.updateUser(id, payload);
+    const result = await UserService.updateUser(id, req);
 
     sendResponse(res, {
         statusCode: 200,

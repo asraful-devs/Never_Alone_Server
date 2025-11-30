@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import { Request } from 'express';
 import config from '../../config/config';
 import prisma from '../../config/db';
+import { fileUploader } from '../../helpers/fileUploader';
 import { IOptions, paginationHelper } from '../../helpers/paginationHelper';
 
 const createUser = async (req: Request) => {
@@ -127,16 +128,22 @@ const getSingleUser = async (id: string) => {
 };
 
 // Update User Service
-const updateUser = async (
-    id: string,
-    payload: Partial<Prisma.UserUpdateInput>
-) => {
+const updateUser = async (id: string, req: Request) => {
+    if (req.file) {
+        const uploadResult = await fileUploader.uploadToCloudinary(req.file);
+        req.body.profilePhoto = uploadResult?.secure_url;
+    }
+
+    const payload = req.body;
+
     const result = await prisma.user.update({
         where: {
             id,
             isDeleted: false,
         },
-        data: payload,
+        data: {
+            ...payload,
+        },
     });
     return result;
 };

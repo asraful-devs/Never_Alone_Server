@@ -33,6 +33,7 @@
         "express": "^5.1.0",
         "http-status": "^2.1.0",
         "jsonwebtoken": "^9.0.2",
+        "multer": "^2.0.2",
         "prisma": "^6.19.0",
         "zod": "^4.1.13"
     },
@@ -42,6 +43,7 @@
         "@types/express": "^5.0.5",
         "@types/http-status": "^0.2.30",
         "@types/jsonwebtoken": "^9.0.10",
+        "@types/multer": "^2.0.0",
         "@types/node": "^24.10.1",
         "nodemon": "^3.1.11",
         "ts-node-dev": "^2.0.0",
