@@ -48,6 +48,8 @@ model Host {
 
   person Person @relation(fields: [email], references: [email])
 
+  events Event[]
+
   @@map("hosts")
 }
 
