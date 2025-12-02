@@ -1,12 +1,13 @@
 model Event {
-  id          String   @id @default(uuid())
-  title       String
-  description String
-  eventImage  String?
-  date        DateTime
-  fee         Float
-  seats       Int
-  location    String
+  id            String   @id @default(uuid())
+  title         String
+  description   String
+  eventImage    String?
+  startDateTime DateTime
+  endDateTime   DateTime
+  fee           Float
+  seats         Int
+  location      String
 
   host Host @relation(fields: [hostId], references: [id])
 

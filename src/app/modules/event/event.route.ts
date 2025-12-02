@@ -16,4 +16,23 @@ router.post(
     }
 );
 
+router.get('/get-all-events', EventController.GetAllEvents);
+
+router.get('/get-single-event/:id', EventController.GetSingleEvent);
+
+router.patch(
+    '/update-event/:id',
+    fileUploader.upload.single('file'),
+    (req: Request, res: Response, next: NextFunction) => {
+        if (req.body.data) {
+            req.body = EventValidation.updateEventZodSchema.parse(
+                JSON.parse(req.body.data)
+            );
+        }
+        return EventController.UpdateEvent(req, res, next);
+    }
+);
+
+router.delete('/delete-event/:id', EventController.DeleteEvent);
+
 export const eventRoutes = router;
