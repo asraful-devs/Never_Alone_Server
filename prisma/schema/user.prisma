@@ -70,5 +70,11 @@ model User {
 
   reviews Review[]
 
+  // Many-to-Many: একজন User অনেকগুলো Event এ যোগ দিতে পারে
+  eventIds String[]
+  events   Event[]  @relation("EventToUsers")
+
+  bookings Booking[]
+
   @@map("users")
 }

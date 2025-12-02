@@ -9,9 +9,15 @@ model Event {
   seats         Int
   location      String
 
-  host Host @relation(fields: [hostId], references: [id])
-
+  host   Host   @relation(fields: [hostId], references: [id])
   hostId String
+
+  // Many-to-Many: Event এ অনেক User থাকতে পারে
+  userIds String[]
+  users   User[]   @relation("EventToUsers")
+
+  bookings Booking[]
+  reviews  Review[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
