@@ -128,7 +128,11 @@ const getSingleHost = async (req: Request) => {
             id: id,
             isDeleted: false,
         },
+        include: {
+            reviews: true,
+        },
     });
+    // console.log(host);
     return host;
 };
 
