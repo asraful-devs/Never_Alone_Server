@@ -1,0 +1,60 @@
+{
+    "name": "never_alone_server",
+    "version": "1.0.0",
+    "description": "",
+    "main": "server.js",
+    "prisma": {
+        "schema": "./prisma/schema/"
+    },
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "build": "tsc",
+        "start": "node dist/server.js",
+        "dev": "ts-node-dev --respawn --transpile-only src/server.ts"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/asraful-devs/Never_Alone_Server.git"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "type": "commonjs",
+    "bugs": {
+        "url": "https://github.com/asraful-devs/Never_Alone_Server/issues"
+    },
+    "homepage": "https://github.com/asraful-devs/Never_Alone_Server#readme",
+    "dependencies": {
+        "@prisma/client": "^6.19.0",
+        "bcrypt": "^6.0.0",
+        "cloudinary": "^2.8.0",
+        "cookie-parser": "^1.4.7",
+        "cors": "^2.8.5",
+        "dotenv": "^17.2.3",
+        "express": "^5.1.0",
+        "http-status": "^2.1.0",
+        "jsonwebtoken": "^9.0.2",
+        "multer": "^2.0.2",
+        "node-cron": "^4.2.1",
+        "nodemailer": "^7.0.11",
+        "prisma": "^6.19.0",
+        "stripe": "^20.0.0",
+        "uuid": "^13.0.0",
+        "zod": "^4.1.13"
+    },
+    "devDependencies": {
+        "@types/bcrypt": "^6.0.0",
+        "@types/cookie-parser": "^1.4.10",
+        "@types/cors": "^2.8.19",
+        "@types/express": "^5.0.5",
+        "@types/http-status": "^0.2.30",
+        "@types/jsonwebtoken": "^9.0.10",
+        "@types/multer": "^2.0.0",
+        "@types/node": "^24.10.1",
+        "@types/nodemailer": "^7.0.4",
+        "@types/stripe": "^8.0.416",
+        "nodemon": "^3.1.11",
+        "ts-node-dev": "^2.0.0",
+        "typescript": "^5.9.3"
+    }
+}

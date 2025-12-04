@@ -1,0 +1,21 @@
+enum Role {
+  USER
+  HOST
+  ADMIN
+}
+
+enum status {
+  ACTIVE
+  INACTIVE
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PAID
+  UNPAID
+}
