@@ -1,7 +1,11 @@
 import nodemailer from 'nodemailer';
 import config from '../config/config';
 
-const emailSender = async (email: string, html: string, subject: string) => {
+const emailSender = async (
+    email: string,
+    subject: string,
+    htmlContent: string
+) => {
     const transporter = nodemailer.createTransport({
         host: 'smtp.gmail.com',
         port: 587,
@@ -19,11 +23,14 @@ const emailSender = async (email: string, html: string, subject: string) => {
         from: `"Never Alone" <${config.email.sender}>`, // sender address
         to: email, // list of receivers
         subject: subject, // Subject line
-        //text: "Hello world?", // plain text body
-        html, // html body
+        html: htmlContent, // html body
+        headers: {
+            'Content-Type': 'text/html; charset=UTF-8',
+        },
     });
 
-    // console.log(info);
+    console.log('Email sent:', info.messageId);
+    return info;
 };
 
 export default emailSender;

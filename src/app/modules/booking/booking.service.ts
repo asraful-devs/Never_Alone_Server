@@ -1,5 +1,6 @@
 import { Request } from 'express';
 import { v4 as uuidv4 } from 'uuid';
+import { paymentConfirmationTemplate } from '../../../templates/email';
 import prisma from '../../config/db';
 import ApiError from '../../error/ApiError';
 import { stripe } from '../../helpers/stripe';
@@ -98,204 +99,16 @@ const createBooking = async (req: Request) => {
                 cancel_url: `https://next.programming-hero.com/`,
             });
 
+            const emailTemplate = paymentConfirmationTemplate(
+                isUserExists,
+                isEventExists,
+                session.url || ''
+            );
+
             await emailSender(
                 isUserExists.email,
-                'Payment Confirmation - Never Alone',
-                `
-            <!DOCTYPE html>
-            <html lang="en">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Payment Confirmation - Never Alone</title>
-                <style>
-                    body {
-                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                        line-height: 1.6;
-                        color: #333;
-                        margin: 0;
-                        padding: 0;
-                        background-color: #f5f5f5;
-                    }
-                    .email-container {
-                        max-width: 600px;
-                        margin: 20px auto;
-                        background-color: #ffffff;
-                        border-radius: 8px;
-                        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-                        overflow: hidden;
-                    }
-                    .header {
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                        color: white;
-                        padding: 30px 20px;
-                        text-align: center;
-                    }
-                    .header h1 {
-                        margin: 0;
-                        font-size: 28px;
-                        font-weight: 700;
-                    }
-                    .content {
-                        padding: 30px 20px;
-                    }
-                    .greeting {
-                        font-size: 16px;
-                        color: #333;
-                        margin-bottom: 20px;
-                    }
-                    .event-details {
-                        background-color: #f9f9f9;
-                        border-left: 4px solid #667eea;
-                        padding: 15px;
-                        margin: 20px 0;
-                        border-radius: 4px;
-                    }
-                    .event-details h3 {
-                        margin: 0 0 10px 0;
-                        color: #667eea;
-                        font-size: 14px;
-                        text-transform: uppercase;
-                        letter-spacing: 0.5px;
-                    }
-                    .event-title {
-                        font-size: 18px;
-                        font-weight: 600;
-                        color: #333;
-                        margin: 0;
-                    }
-                    .price-section {
-                        margin: 20px 0;
-                        text-align: center;
-                    }
-                    .price {
-                        font-size: 24px;
-                        font-weight: 700;
-                        color: #667eea;
-                        margin: 10px 0;
-                    }
-                    .cta-section {
-                        margin: 30px 0;
-                        text-align: center;
-                    }
-                    .cta-button {
-                        display: inline-block;
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                        color: white;
-                        padding: 14px 40px;
-                        text-decoration: none;
-                        border-radius: 6px;
-                        font-weight: 600;
-                        font-size: 16px;
-                        transition: transform 0.3s ease, box-shadow 0.3s ease;
-                        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-                    }
-                    .cta-button:hover {
-                        transform: translateY(-2px);
-                        box-shadow: 0 6px 16px rgba(102, 126, 234, 0.6);
-                    }
-                    .info-text {
-                        font-size: 14px;
-                        color: #666;
-                        margin: 20px 0;
-                        line-height: 1.8;
-                    }
-                    .footer {
-                        background-color: #f5f5f5;
-                        padding: 20px;
-                        text-align: center;
-                        border-top: 1px solid #e0e0e0;
-                        font-size: 12px;
-                        color: #999;
-                    }
-                    .footer a {
-                        color: #667eea;
-                        text-decoration: none;
-                    }
-                    .payment-id {
-                        background-color: #f0f0f0;
-                        padding: 10px;
-                        border-radius: 4px;
-                        font-family: 'Courier New', monospace;
-                        font-size: 12px;
-                        color: #666;
-                        margin: 15px 0;
-                        word-break: break-all;
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="email-container">
-                    <div class="header">
-                        <h1>🎉 Event Booking Confirmed</h1>
-                    </div>
-
-                    <div class="content">
-                        <p class="greeting">Hello <strong>${
-                            isUserExists.name || 'Valued Guest'
-                        }</strong>,</p>
-
-                        <p class="info-text">
-                            Thank you for choosing <strong>Never Alone</strong>! We're excited to have you join us.
-                            To complete your booking and secure your spot, please proceed with the payment below.
-                        </p>
-
-                        <div class="event-details">
-                            <h3>📌 Event Details</h3>
-                            <p class="event-title">${isEventExists.title}</p>
-                            <p style="margin: 8px 0; color: #666; font-size: 14px;">
-                                📅 ${new Date(
-                                    isEventExists.startDateTime
-                                ).toLocaleDateString('en-US', {
-                                    weekday: 'long',
-                                    year: 'numeric',
-                                    month: 'long',
-                                    day: 'numeric',
-                                })}
-                            </p>
-                            <p style="margin: 8px 0; color: #666; font-size: 14px;">
-                                📍 ${isEventExists.location}
-                            </p>
-                        </div>
-
-                        <div class="price-section">
-                            <p style="margin: 0; color: #666; font-size: 14px;">Amount to Pay</p>
-                            <div class="price">৳ ${isEventExists.fee}</div>
-                        </div>
-
-                        <div class="cta-section">
-                            <a href="${session.url}" class="cta-button">
-                                🔒 Proceed to Payment
-                            </a>
-                        </div>
-
-                        <p class="info-text" style="border-top: 1px solid #eee; padding-top: 20px;">
-                            <strong>⏰ Important:</strong> Please complete your payment within the next 30 minutes to confirm your booking.
-                            Unpaid bookings will be automatically cancelled after 30 minutes.
-                        </p>
-
-                        <p class="info-text">
-                            If you have any questions or need assistance, feel free to reach out to our support team.
-                            <br><br>
-                            Best regards,<br>
-                            <strong>Never Alone Team</strong>
-                        </p>
-                    </div>
-
-                    <div class="footer">
-                        <p style="margin: 0 0 10px 0;">
-                            © 2024 Never Alone Events. All rights reserved.
-                        </p>
-                        <p style="margin: 0;">
-                            <a href="#">Privacy Policy</a> |
-                            <a href="#">Terms & Conditions</a> |
-                            <a href="#">Contact Us</a>
-                        </p>
-                    </div>
-                </div>
-            </body>
-            </html>
-            `
+                'Complete Your Booking - Never Alone',
+                emailTemplate
             );
 
             return { paymentUrl: session.url };

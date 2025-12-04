@@ -3,10 +3,12 @@ import bcrypt from 'bcrypt';
 import { Request } from 'express';
 import httpStatus from 'http-status';
 import { Secret } from 'jsonwebtoken';
+import { resetPasswordTemplate } from '../../../templates/email';
 import config from '../../config/config';
 import prisma from '../../config/db';
 import ApiError from '../../error/ApiError';
 import { JwtHelper } from '../../helpers/jwtHelper';
+import emailSender from '../../utils/emailSender';
 
 const login = async (req: Request) => {
     const payload = req.body;
@@ -139,21 +141,12 @@ const forgotPassword = async (payload: { email: string }) => {
         config.jwt.reset_pass_link +
         `?userId=${userData.id}&token=${resetPassToken}`;
 
+    const emailTemplate = resetPasswordTemplate(userData, resetPassLink);
+
     await emailSender(
         userData.email,
-        `
-        <div>
-            <p>Dear User,</p>
-            <p>Your password reset link
-                <a href=${resetPassLink}>
-                    <button>
-                        Reset Password
-                    </button>
-                </a>
-            </p>
-
-        </div>
-        `
+        'Reset Your Password - Never Alone',
+        emailTemplate
     );
 };
 
