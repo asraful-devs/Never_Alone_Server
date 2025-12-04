@@ -2,6 +2,7 @@ import express from 'express';
 import { adminRoutes } from '../modules/admin/admin.route';
 import { authRoutes } from '../modules/auth/auth.route';
 import { BookingRoute } from '../modules/booking/booking.route';
+import { carouselRouter } from '../modules/carousel/carousel.route';
 import { eventRoutes } from '../modules/event/event.route';
 import { hostRoutes } from '../modules/host/host.route';
 import { reviewRoutes } from '../modules/review/review.route';
@@ -37,6 +38,10 @@ const moduleRoutes = [
     {
         path: '/review',
         route: reviewRoutes,
+    },
+    {
+        path: '/carousel',
+        route: carouselRouter,
     },
 ];
 

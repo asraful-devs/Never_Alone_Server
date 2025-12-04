@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import prisma from '../../config/db';
 import ApiError from '../../error/ApiError';
 import { stripe } from '../../helpers/stripe';
-import emailSender from './emailSender';
+import emailSender from '../../utils/emailSender';
 
 const createBooking = async (req: Request) => {
     const payload = req.body;
@@ -100,6 +100,7 @@ const createBooking = async (req: Request) => {
 
             await emailSender(
                 isUserExists.email,
+                'Payment Confirmation - Never Alone',
                 `
             <!DOCTYPE html>
             <html lang="en">
@@ -367,7 +368,6 @@ const deleteBooking = async (id: string) => {
 const cancelUnpaidBookings = async () => {
     const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000);
 
-    // ১. সব unpaid bookings খুঁজে বের করুন (৭টি booking পাবেন)
     const unPaidBookings = await prisma.booking.findMany({
         where: {
             createdAt: {
@@ -378,16 +378,12 @@ const cancelUnpaidBookings = async () => {
     });
 
     if (unPaidBookings.length === 0) {
-        console.log('কোন unpaid booking নেই');
         return;
     }
-
-    console.log(`${unPaidBookings.length} টি unpaid booking পাওয়া গেছে`);
 
     const bookingIdsToCancel = unPaidBookings.map((booking) => booking.id);
 
     await prisma.$transaction(async (tnx) => {
-        // ২. Payment records delete করুন (৭টি payment)
         await tnx.payment.deleteMany({
             where: {
                 bookingId: {
@@ -396,7 +392,6 @@ const cancelUnpaidBookings = async () => {
             },
         });
 
-        // ৩. Booking records delete করুন (৭টি booking)
         await tnx.booking.deleteMany({
             where: {
                 id: {
@@ -405,56 +400,40 @@ const cancelUnpaidBookings = async () => {
             },
         });
 
-        // ৪. যে events গুলোতে unpaid bookings ছিল, সেগুলো খুঁজে বের করুন
         const affectedEventIds = [
             ...new Set(unPaidBookings.map((b) => b.eventId)),
-        ]; // ৩টি unique event ID
+        ];
 
-        console.log(`${affectedEventIds.length} টি event affected হয়েছে`);
-
-        // ৫. প্রতিটা affected event এর জন্য:
         for (const eventId of affectedEventIds) {
-            // এই event এর জন্য কতজন unpaid ছিল তা বের করুন
             const cancelledUsersForThisEvent = unPaidBookings
                 .filter((booking) => booking.eventId === eventId)
                 .map((booking) => booking.userId);
 
-            console.log(
-                `Event ${eventId}: ${cancelledUsersForThisEvent.length} জন user cancel হচ্ছে`
-            );
-
-            // বর্তমান event data আনুন
             const currentEvent = await tnx.event.findUnique({
                 where: { id: eventId },
                 select: { userIds: true },
             });
 
             if (currentEvent) {
-                // Cancelled users বাদ দিয়ে নতুন userIds array তৈরি করুন
                 const updatedUserIds = currentEvent.userIds.filter(
                     (userId: string) =>
                         !cancelledUsersForThisEvent.includes(userId)
                 );
 
-                // Event update করুন
                 await tnx.event.update({
                     where: { id: eventId },
                     data: {
                         seats: {
-                            increment: cancelledUsersForThisEvent.length, // যতজন cancel হলো ততগুলো seat বাড়ান
+                            increment: cancelledUsersForThisEvent.length,
                         },
                         userIds: {
-                            set: updatedUserIds, // নতুন user list set করুন
+                            set: updatedUserIds,
                         },
                     },
                 });
             }
         }
     });
-
-    console.log(
-        `✅ সফলভাবে ${unPaidBookings.length} টি unpaid booking cancel করা হয়েছে`
-    );
 };
 
 export const BookingService = {
