@@ -23,4 +23,8 @@ export default {
         webhookSecret: process.env.WEBHOOK_SECRET,
         stripeSecretKey: process.env.STRIPE_SECRET_KEY,
     },
+    email: {
+        sender: process.env.EMAIL_SENDER_EMAIL,
+        app_pass: process.env.EMAIL_SENDER_APP_PASS,
+    },
 };

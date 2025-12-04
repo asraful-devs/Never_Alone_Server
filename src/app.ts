@@ -1,8 +1,10 @@
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express, { Application, Request, Response } from 'express';
+import cron from 'node-cron';
 import globalErrorHandler from './app/middlewares/globalErrorHandler';
 import notFound from './app/middlewares/notFound';
+import { BookingService } from './app/modules/booking/booking.service';
 import { PaymentController } from './app/modules/payment/payment.controller';
 import router from './app/routes';
 
@@ -20,6 +22,15 @@ app.use(
         credentials: true,
     })
 );
+
+cron.schedule('* * * * *', () => {
+    try {
+        console.log('Node cron called at ', new Date());
+        BookingService.cancelUnpaidBookings();
+    } catch (err) {
+        console.error(err);
+    }
+});
 
 //parser
 app.use(express.json());
