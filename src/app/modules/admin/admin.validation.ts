@@ -7,6 +7,8 @@ const createAdminValidationSchema = z.object({
 });
 
 const updateAdminValidationSchema = z.object({
+  name: z.string().optional(),
+  password: z.string().optional(),
   contactNumber: z.string().optional(),
   profilePhoto: z.string().url("Invalid URL").optional(),
 });

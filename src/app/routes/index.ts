@@ -3,6 +3,7 @@ import { adminRoutes } from '../modules/admin/admin.route';
 import { authRoutes } from '../modules/auth/auth.route';
 import { BookingRoute } from '../modules/booking/booking.route';
 import { carouselRouter } from '../modules/carousel/carousel.route';
+import { CategoryRoutes } from '../modules/category/category.route';
 import { eventRoutes } from '../modules/event/event.route';
 import { hostRoutes } from '../modules/host/host.route';
 import { reviewRoutes } from '../modules/review/review.route';
@@ -38,6 +39,10 @@ const moduleRoutes = [
     {
         path: '/review',
         route: reviewRoutes,
+    },
+    {
+        path: '/category',
+        route: CategoryRoutes,
     },
     {
         path: '/carousel',
