@@ -25,6 +25,16 @@ const createEvent = async (req: Request) => {
 
     console.log(payload);
 
+    const categoryIsExisting = await prisma.category.findUnique({
+        where: {
+            id: payload.categoryId,
+        },
+    });
+
+    if (!categoryIsExisting) {
+        throw new ApiError(404, 'Category not found');
+    }
+
     const result = await prisma.event.create({
         data: {
             ...payload,
@@ -37,40 +47,62 @@ const getAllEvents = async (
     filters: {
         title?: string;
         location?: string;
+        category?: string;
         searchTerm?: string;
     },
     options: IOptions
 ) => {
     const { limit, page, skip } = paginationHelper.calculatePagination(options);
-    const { searchTerm, ...filterData } = filters;
+    const { searchTerm, category, ...filterData } = filters;
 
     const andConditions = [];
 
     if (searchTerm) {
         andConditions.push({
-            OR: ['title', 'location'].map((field) => ({
-                [field]: {
-                    contains: searchTerm,
-                    mode: 'insensitive',
+            OR: [
+                {
+                    title: {
+                        contains: searchTerm,
+                        mode: Prisma.QueryMode.insensitive,
+                    },
                 },
-            })),
+                {
+                    location: {
+                        contains: searchTerm,
+                        mode: Prisma.QueryMode.insensitive,
+                    },
+                },
+            ],
+        });
+    }
+
+    if (category) {
+        andConditions.push({
+            category: {
+                is: {
+                    slug: {
+                        equals: category,
+                        mode: Prisma.QueryMode.insensitive,
+                    },
+                },
+            },
         });
     }
 
     if (Object.keys(filterData).length > 0) {
-        andConditions.push({
-            AND: Object.keys(filterData).map((key) => {
-                return {
-                    [key]: {
-                        equals: (filterData as any)[key],
-                    },
-                };
-            }),
+        Object.keys(filterData).forEach((key) => {
+            andConditions.push({
+                [key]: {
+                    equals: (filterData as any)[key],
+                },
+            });
         });
     }
 
     const whereConditions: Prisma.EventWhereInput =
-        andConditions.length > 0 ? { AND: andConditions } : {};
+        andConditions.length > 0
+            ? { AND: andConditions as Prisma.EventWhereInput[] }
+            : {};
 
     const result = await prisma.event.findMany({
         where: whereConditions,
@@ -82,6 +114,16 @@ const getAllEvents = async (
                 : {
                       createdAt: 'desc',
                   },
+        include: {
+            category: true,
+            host: {
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                },
+            },
+        },
     });
 
     const total = await prisma.event.count({

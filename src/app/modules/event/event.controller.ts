@@ -16,7 +16,12 @@ const CreateEvent = catchAsync(async (req: Request, res: Response) => {
 });
 
 const GetAllEvents = catchAsync(async (req: Request, res: Response) => {
-    const filters = pick(req.query, ['title', 'location']);
+    const filters = pick(req.query, [
+        'title',
+        'location',
+        'category',
+        'searchTerm',
+    ]);
     const options = pick(req.query, ['limit', 'page', 'sortBy', 'sortOrder']);
 
     const result = await EventService.getAllEvents(filters, options);

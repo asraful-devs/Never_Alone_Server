@@ -1,22 +1,27 @@
 import { Request } from 'express';
 import prisma from '../../config/db';
 import ApiError from '../../error/ApiError';
+import { generateSlug } from '../../utils/slugify';
 
 const createCategory = async (req: Request) => {
     const payload = req.body;
 
+    const slug = generateSlug(payload.name);
     const isExisting = await prisma.category.findFirst({
         where: {
-            name: payload.name,
+            OR: [{ name: payload.name }, { slug: slug }],
         },
     });
 
     if (isExisting) {
-        throw new ApiError(404, 'Category with this name already exists');
+        throw new ApiError(409, 'Category with this name already exists');
     }
 
     const result = await prisma.category.create({
-        data: payload,
+        data: {
+            ...payload,
+            slug: slug,
+        },
     });
 
     return result;
