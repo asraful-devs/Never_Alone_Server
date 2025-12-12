@@ -16,6 +16,8 @@ app.post(
     PaymentController.handleStripeWebhookEvent
 );
 
+// console.log('update stripe')
+
 app.use(
     cors({
         origin: 'http://localhost:3000',
@@ -25,7 +27,7 @@ app.use(
 
 cron.schedule('* * * * *', () => {
     try {
-        console.log('Node cron called at ', new Date());
+        console.log('Node cron called at this ', new Date());
         BookingService.cancelUnpaidBookings();
     } catch (err) {
         console.error(err);
