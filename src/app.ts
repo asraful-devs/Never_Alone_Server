@@ -20,7 +20,7 @@ app.post(
 
 app.use(
     cors({
-        origin: 'http://localhost:3000',
+        origin: 'https://never-alone-client.onrender.com',
         credentials: true,
     })
 );
