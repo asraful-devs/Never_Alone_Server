@@ -1,6 +1,8 @@
+import { Prisma } from '@prisma/client';
 import { Request } from 'express';
 import prisma from '../../config/db';
 import ApiError from '../../error/ApiError';
+import { IOptions, paginationHelper } from '../../helpers/paginationHelper';
 
 const createReview = async (req: Request) => {
     const payload = req.body;
@@ -35,9 +37,71 @@ const createReview = async (req: Request) => {
     return result;
 };
 
-const getAllReviews = async (req: Request) => {
-    const reviews = await prisma.review.findMany({});
-    return reviews;
+// Get All Reviews Service
+const getAllReviews = async (
+    filters: {
+        email?: string;
+        rating?: number;
+        searchTerm?: string;
+    },
+    options: IOptions
+) => {
+    const { limit, page, skip } = paginationHelper.calculatePagination(options);
+    const { searchTerm, ...filterData } = filters;
+    const andConditions = [];
+
+    // Search term condition
+    if (searchTerm) {
+        andConditions.push({
+            OR: ['email', 'comment'].map((field) => ({
+                [field]: {
+                    contains: searchTerm,
+                    mode: 'insensitive',
+                },
+            })),
+        });
+    }
+
+    // Filter conditions
+    if (Object.keys(filterData).length > 0) {
+        andConditions.push({
+            AND: Object.keys(filterData).map((key) => {
+                return {
+                    [key]: {
+                        equals: (filterData as any)[key],
+                    },
+                };
+            }),
+        });
+    }
+
+    const whereConditions: Prisma.ReviewWhereInput =
+        andConditions.length > 0 ? { AND: andConditions } : {};
+
+    const result = await prisma.review.findMany({
+        where: whereConditions,
+        skip,
+        take: limit,
+        orderBy:
+            options.sortBy && options.sortOrder
+                ? { [options.sortBy]: options.sortOrder }
+                : {
+                      createdAt: 'desc',
+                  },
+    });
+
+    const total = await prisma.review.count({
+        where: whereConditions,
+    });
+
+    return {
+        meta: {
+            total,
+            page,
+            limit,
+        },
+        data: result,
+    };
 };
 
 const deleteReview = async (req: Request) => {

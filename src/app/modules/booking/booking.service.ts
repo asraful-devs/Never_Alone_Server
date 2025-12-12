@@ -1,256 +1,408 @@
-import { Request } from 'express';
-import { v4 as uuidv4 } from 'uuid';
-import { paymentConfirmationTemplate } from '../../../templates/email';
-import prisma from '../../config/db';
-import ApiError from '../../error/ApiError';
-import { stripe } from '../../helpers/stripe';
-import emailSender from '../../utils/emailSender';
+// booking.service.ts
 
-const createBooking = async (req: Request) => {
-    const payload = req.body;
+import { Request } from "express";
+import { v4 as uuidv4 } from "uuid";
+import { paymentConfirmationTemplate } from "../../../templates/email";
+import prisma from "../../config/db";
+import ApiError from "../../error/ApiError";
+import { stripe } from "../../helpers/stripe";
+import emailSender from "../../utils/emailSender";
+import { IOptions, paginationHelper } from "../../helpers/paginationHelper";
 
-    const isUserExists = await prisma.user.findUnique({
-        where: {
-            id: payload.userId,
-            isDeleted: false,
-        },
-    });
+interface AuthenticatedRequest extends Request {
+  user?: {
+    parsonId?: string; // ⚠️ Backend এ typo আছে
+    personId?: string; // সঠিক spelling
+    email: string;
+    role: string;
+  };
+}
 
-    if (!isUserExists) {
-        throw new ApiError(404, 'User does not exist');
-    }
+const createBooking = async (req: AuthenticatedRequest) => {
+  const payload = req.body; // { eventId: string, seats?: number }
 
-    const isEventExists = await prisma.event.findUnique({
-        where: {
-            id: payload.eventId,
-        },
-    });
+  // ✅ Step 1: JWT থেকে Person ID নিন
+  const personId = req.user?.parsonId || req.user?.personId; // দুটোই চেক করুন
 
-    if (!isEventExists) {
-        throw new ApiError(404, 'Event does not exist');
-    }
+  if (!personId) {
+    console.error("❌ JWT user data:", req.user);
+    throw new ApiError(401, "Unauthorized - Please login again");
+  }
 
-    if (isEventExists.seats <= 0) {
-        throw new ApiError(400, 'No seats available for this event');
-    }
+  console.log("👤 Authenticated Person ID:", personId);
 
-    if (isEventExists.userIds.includes(payload.userId)) {
-        throw new ApiError(
-            400,
-            'User has already booked this event.You cannot book again'
-        );
-    }
+  // ✅ Step 2: Person থেকে User data নিন
+  const personWithUser = await prisma.person.findUnique({
+    where: {
+      id: personId, // ✅ JWT থেকে পাওয়া ID
+    },
+    include: {
+      user: true,
+    },
+  });
 
-    const result = await prisma.$transaction(
-        async (tnx: any) => {
-            const booking = await tnx.booking.create({
-                data: {
-                    userId: payload.userId,
-                    eventId: payload.eventId,
-                },
-            });
+  if (!personWithUser) {
+    throw new ApiError(404, "Person does not exist");
+  }
 
-            const transactionId = uuidv4();
+  if (personWithUser.role !== "USER") {
+    throw new ApiError(403, "Only users can book events");
+  }
 
-            const payment = await tnx.payment.create({
-                data: {
-                    bookingId: booking.id,
-                    amount: isEventExists.fee,
-                    paymentGatewayData: {},
-                    transactionId,
-                },
-            });
+  if (!personWithUser.user) {
+    throw new ApiError(404, "User profile not found for this person");
+  }
 
-            const updateEvent = await tnx.event.update({
-                where: {
-                    id: isEventExists.id,
-                },
-                data: {
-                    seats: { decrement: 1 },
-                    // Add user to the event's users list
-                    userIds: {
-                        push: payload.userId,
-                    },
-                },
-            });
-            // console.log(booking, payment, updateEvent);
+  if (personWithUser.user.isDeleted) {
+    throw new ApiError(403, "User account is deleted");
+  }
 
-            const session = await stripe.checkout.sessions.create({
-                payment_method_types: ['card'],
-                mode: 'payment',
-                customer_email: isUserExists.email,
-                line_items: [
-                    {
-                        price_data: {
-                            currency: 'bdt',
-                            product_data: {
-                                name: `Events Title :  ${isEventExists.title}`,
-                            },
-                            unit_amount: (isEventExists.fee ?? 0) * 100,
-                        },
-                        quantity: 1,
-                    },
-                ],
-                metadata: {
-                    bookingId: booking.id,
-                    paymentId: payment.id,
-                },
-                success_url: `https://www.programming-hero.com/`,
-                cancel_url: `https://next.programming-hero.com/`,
-            });
+  const userId = personWithUser.user.id;
+  const userEmail = personWithUser.user.email;
 
-            const emailTemplate = paymentConfirmationTemplate(
-                isUserExists,
-                isEventExists,
-                session.url || ''
-            );
+  console.log("✅ User ID:", userId, "| Email:", userEmail);
 
-            await emailSender(
-                isUserExists.email,
-                'Complete Your Booking - Never Alone',
-                emailTemplate
-            );
+  // ✅ Step 3: Event check করুন
+  const isEventExists = await prisma.event.findUnique({
+    where: {
+      id: payload.eventId,
+    },
+  });
 
-            return { paymentUrl: session.url };
-        },
-        {
-            timeout: 10000,
-        }
+  if (!isEventExists) {
+    throw new ApiError(404, "Event does not exist");
+  }
+
+  if (isEventExists.seats <= 0) {
+    throw new ApiError(400, "No seats available for this event");
+  }
+
+  // ✅ Duplicate booking check
+  if (isEventExists.userIds.includes(userId)) {
+    throw new ApiError(
+      400,
+      "You have already booked this event. Cannot book again",
     );
+  }
 
-    return result;
-};
-
-const deleteBooking = async (id: string) => {
-    const booking = await prisma.booking.findUnique({
-        where: {
-            id,
+  // ✅ Step 4: Transaction করুন
+  const result = await prisma.$transaction(
+    async (tnx: any) => {
+      // 1. Booking create
+      const booking = await tnx.booking.create({
+        data: {
+          userId: userId, // User table এর ID
+          eventId: payload.eventId,
+          paymentStatus: "UNPAID",
+          status: "PENDING",
         },
-    });
+      });
 
-    if (!booking) {
-        throw new ApiError(404, 'Booking not found');
-    }
+      console.log("✅ Booking created:", booking.id);
 
-    if (booking.paymentStatus === 'PAID') {
-        throw new ApiError(
-            400,
-            'Cannot delete a booking with completed payment'
-        );
-    }
-
-    const result = await prisma.$transaction(async (tnx: any) => {
-        const deletedPayment = await tnx.payment.delete({
-            where: {
-                bookingId: id,
-            },
-        });
-
-        const EventData = await tnx.event.findUnique({
-            where: {
-                id: booking.eventId,
-            },
-        });
-
-        const updateEvent = await tnx.event.update({
-            where: {
-                id: booking.eventId,
-            },
-            data: {
-                seats: { increment: 1 },
-                userIds: {
-                    set: EventData.userIds.filter(
-                        (id: string) => id !== booking.userId
-                    ),
-                },
-            },
-        });
-
-        const deletedBooking = await tnx.booking.delete({
-            where: {
-                id,
-            },
-        });
-
-        return deletedBooking;
-    });
-
-    return result;
-};
-
-const cancelUnpaidBookings = async () => {
-    const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000);
-
-    const unPaidBookings = await prisma.booking.findMany({
-        where: {
-            createdAt: {
-                lte: thirtyMinAgo,
-            },
-            paymentStatus: 'UNPAID',
+      // 2. Payment record create
+      const transactionId = uuidv4();
+      const payment = await tnx.payment.create({
+        data: {
+          bookingId: booking.id,
+          amount: isEventExists.fee,
+          paymentGatewayData: {},
+          transactionId,
+          status: "UNPAID",
         },
-    });
+      });
 
-    if (unPaidBookings.length === 0) {
-        return;
-    }
+      console.log("✅ Payment created:", payment.id);
 
-    const bookingIdsToCancel = unPaidBookings.map((booking) => booking.id);
+      // 3. Event update (seats decrement)
+      await tnx.event.update({
+        where: {
+          id: isEventExists.id,
+        },
+        data: {
+          seats: { decrement: 1 },
+          userIds: {
+            push: userId,
+          },
+        },
+      });
 
-    await prisma.$transaction(async (tnx) => {
-        await tnx.payment.deleteMany({
-            where: {
-                bookingId: {
-                    in: bookingIdsToCancel,
-                },
+      // 4. Stripe payment session create
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        mode: "payment",
+        customer_email: userEmail,
+        line_items: [
+          {
+            price_data: {
+              currency: "bdt",
+              product_data: {
+                name: `Event: ${isEventExists.title}`,
+              },
+              unit_amount: (isEventExists.fee ?? 0) * 100,
             },
-        });
+            quantity: 1,
+          },
+        ],
+        metadata: {
+          bookingId: booking.id,
+          paymentId: payment.id,
+        },
+        // success_url: `${process.env.FRONTEND_URL}/booking/success?session_id={CHECKOUT_SESSION_ID}`,
+        // cancel_url: `${process.env.FRONTEND_URL}/booking/cancel`,
+        success_url: `https://www.programming-hero.com/`,
+        cancel_url: `https://next.programming-hero.com/`,
+      });
 
-        await tnx.booking.deleteMany({
-            where: {
-                id: {
-                    in: bookingIdsToCancel,
-                },
-            },
-        });
+      console.log("✅ Stripe session created:", session.id);
 
-        const affectedEventIds = [
-            ...new Set(unPaidBookings.map((b) => b.eventId)),
-        ];
+      // 5. Send email
+      const emailTemplate = paymentConfirmationTemplate(
+        personWithUser.user,
+        isEventExists,
+        session.url || "",
+      );
 
-        for (const eventId of affectedEventIds) {
-            const cancelledUsersForThisEvent = unPaidBookings
-                .filter((booking) => booking.eventId === eventId)
-                .map((booking) => booking.userId);
+      await emailSender(
+        userEmail,
+        "Complete Your Booking - Never Alone",
+        emailTemplate,
+      );
 
-            const currentEvent = await tnx.event.findUnique({
-                where: { id: eventId },
-                select: { userIds: true },
-            });
+      console.log("✅ Email sent to:", userEmail);
 
-            if (currentEvent) {
-                const updatedUserIds = currentEvent.userIds.filter(
-                    (userId: string) =>
-                        !cancelledUsersForThisEvent.includes(userId)
-                );
+      return {
+        paymentUrl: session.url,
+        bookingId: booking.id,
+        transactionId: transactionId,
+      };
+    },
+    {
+      timeout: 10000,
+    },
+  );
 
-                await tnx.event.update({
-                    where: { id: eventId },
-                    data: {
-                        seats: {
-                            increment: cancelledUsersForThisEvent.length,
-                        },
-                        userIds: {
-                            set: updatedUserIds,
-                        },
-                    },
-                });
-            }
-        }
-    });
+  return result;
 };
 
 export const BookingService = {
-    createBooking,
-    deleteBooking,
-    cancelUnpaidBookings,
+  createBooking,
+};
+
+const deleteBooking = async (id: string) => {
+  const booking = await prisma.booking.findUnique({
+    where: {
+      id,
+    },
+  });
+
+  if (!booking) {
+    throw new ApiError(404, "Booking not found");
+  }
+
+  // ✅ Booking এর paymentStatus check করুন
+  if (booking.paymentStatus === "PAID") {
+    throw new ApiError(400, "Cannot delete a booking with completed payment");
+  }
+
+  const result = await prisma.$transaction(async (tnx: any) => {
+    const deletedPayment = await tnx.payment.delete({
+      where: {
+        bookingId: id,
+      },
+    });
+
+    const EventData = await tnx.event.findUnique({
+      where: {
+        id: booking.eventId,
+      },
+    });
+
+    const updateEvent = await tnx.event.update({
+      where: {
+        id: booking.eventId,
+      },
+      data: {
+        seats: { increment: 1 },
+        userIds: {
+          set: EventData.userIds.filter((id: string) => id !== booking.userId),
+        },
+      },
+    });
+
+    const deletedBooking = await tnx.booking.delete({
+      where: {
+        id,
+      },
+    });
+
+    return deletedBooking;
+  });
+
+  return result;
+};
+
+const getUserBookings = async (
+  filters: {
+    email?: string;
+  },
+  options: IOptions,
+) => {
+  const { limit, page, skip } = paginationHelper.calculatePagination(options);
+
+  // ✅ Email validation
+  if (!filters.email) {
+    throw new ApiError(400, "Email is required");
+  }
+
+  console.log("📧 Searching for email:", filters.email);
+
+  // ✅ Step 1: Email দিয়ে User খুঁজুন
+  const user = await prisma.user.findUnique({
+    where: {
+      email: filters.email,
+    },
+  });
+
+  if (!user) {
+    throw new ApiError(404, "User not found with this email");
+  }
+
+  console.log("✅ User found:", user.id);
+
+  // ✅ Step 2: এই User এর সব Bookings নিন
+  const whereConditions = {
+    userId: user.id,
+  };
+
+  const bookings = await prisma.booking.findMany({
+    where: whereConditions,
+    skip,
+    take: limit,
+    include: {
+      event: {
+        include: {
+          category: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          host: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              profilePhoto: true,
+              rating: true,
+            },
+          },
+        },
+      },
+      payment: {
+        select: {
+          id: true,
+          amount: true,
+          status: true,
+          transactionId: true,
+          createdAt: true,
+        },
+      },
+    },
+    orderBy:
+      options.sortBy && options.sortOrder
+        ? { [options.sortBy]: options.sortOrder }
+        : {
+            createdAt: "desc",
+          },
+  });
+
+  // Total count
+  const total = await prisma.booking.count({
+    where: whereConditions,
+  });
+
+  return {
+    meta: {
+      total,
+      page,
+      limit,
+    },
+    data: bookings,
+  };
+};
+
+const cancelUnpaidBookings = async () => {
+  const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000);
+
+  const unPaidBookings = await prisma.booking.findMany({
+    where: {
+      createdAt: {
+        lte: thirtyMinAgo,
+      },
+      paymentStatus: "UNPAID", // ✅ Booking এর paymentStatus
+    },
+  });
+
+  if (unPaidBookings.length === 0) {
+    return;
+  }
+
+  const bookingIdsToCancel = unPaidBookings.map((booking) => booking.id);
+
+  await prisma.$transaction(async (tnx) => {
+    await tnx.payment.deleteMany({
+      where: {
+        bookingId: {
+          in: bookingIdsToCancel,
+        },
+      },
+    });
+
+    await tnx.booking.deleteMany({
+      where: {
+        id: {
+          in: bookingIdsToCancel,
+        },
+      },
+    });
+
+    const affectedEventIds = [...new Set(unPaidBookings.map((b) => b.eventId))];
+
+    for (const eventId of affectedEventIds) {
+      const cancelledUsersForThisEvent = unPaidBookings
+        .filter((booking) => booking.eventId === eventId)
+        .map((booking) => booking.userId);
+
+      const currentEvent = await tnx.event.findUnique({
+        where: { id: eventId },
+        select: { userIds: true },
+      });
+
+      if (currentEvent) {
+        const updatedUserIds = currentEvent.userIds.filter(
+          (userId: string) => !cancelledUsersForThisEvent.includes(userId),
+        );
+
+        await tnx.event.update({
+          where: { id: eventId },
+          data: {
+            seats: {
+              increment: cancelledUsersForThisEvent.length,
+            },
+            userIds: {
+              set: updatedUserIds,
+            },
+          },
+        });
+      }
+    }
+  });
+};
+
+export const BookingService = {
+  createBooking,
+  deleteBooking,
+  getUserBookings,
+  cancelUnpaidBookings,
 };
