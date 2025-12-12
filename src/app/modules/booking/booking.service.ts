@@ -18,8 +18,8 @@ interface AuthenticatedRequest extends Request {
     };
 }
 
-const createBooking = async (req: AuthenticatedRequest) => {
-    const payload = req.body; // { eventId: string, seats?: number }
+const createBooking = async (req: any) => {
+    const payload = req.body; //
 
     // ✅ Step 1: JWT থেকে Person ID নিন
     const personId = req.user?.parsonId || req.user?.personId; // দুটোই চেক করুন

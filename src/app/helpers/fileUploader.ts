@@ -3,6 +3,9 @@ import multer from 'multer';
 import path from 'path';
 import config from '../config/config';
 
+type MulterFile = Express.Multer.File;
+
+// Multer disk storage
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         cb(null, path.join(process.cwd(), '/uploads'));
@@ -13,25 +16,26 @@ const storage = multer.diskStorage({
     },
 });
 
-const upload = multer({ storage: storage });
+const upload = multer({ storage });
 
-const uploadToCloudinary = async (file: Express.Multer.File) => {
-    // Configuration
+// Correct type for Multer file
+const uploadToCloudinary = async (file: MulterFile) => {
+    // Cloudinary configuration
     cloudinary.config({
         cloud_name: config.cloudinary.cloud_name,
         api_key: config.cloudinary.api_key,
         api_secret: config.cloudinary.api_secret,
     });
 
-    // Upload an image
-    const uploadResult = await cloudinary.uploader
-        .upload(file.path, {
+    try {
+        const uploadResult = await cloudinary.uploader.upload(file.path, {
             public_id: file.filename,
-        })
-        .catch((error) => {
-            console.log(error);
         });
-    return uploadResult;
+        return uploadResult;
+    } catch (error) {
+        console.error('Cloudinary upload error:', error);
+        throw error;
+    }
 };
 
 export const fileUploader = {
