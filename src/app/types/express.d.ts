@@ -1,11 +1,13 @@
-// src/types/express.d.ts
+import type { File as MulterFile } from 'multer';
 
 declare global {
     namespace Express {
         interface Request {
+            file?: MulterFile;
+            files?: MulterFile[];
             user?: {
-                parsonId?: string; // Backend এ typo আছে
-                personId?: string; // সঠিক spelling
+                parsonId?: string;
+                personId?: string;
                 email: string;
                 role: string;
             };
