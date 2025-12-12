@@ -19,7 +19,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // Correct type for Multer file
-const uploadToCloudinary = async (file: MulterFile) => {
+const uploadToCloudinary = async (file: any) => {
     // Cloudinary configuration
     cloudinary.config({
         cloud_name: config.cloudinary.cloud_name,
