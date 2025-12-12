@@ -131,7 +131,10 @@ const getSingleUser = async (id: string) => {
 const updateUser = async (id: string, req: Request) => {
     if (req.file) {
         const uploadResult = await fileUploader.uploadToCloudinary(req.file);
-        req.body.profilePhoto = uploadResult?.secure_url;
+        req.body.profilePhoto =
+            uploadResult && 'secure_url' in uploadResult
+                ? uploadResult.secure_url
+                : undefined;
     }
 
     const payload = req.body;

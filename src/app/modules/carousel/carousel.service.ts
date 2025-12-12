@@ -5,7 +5,10 @@ import { fileUploader } from '../../helpers/fileUploader';
 const createCarousel = async (req: Request) => {
     if (req.file) {
         const uploadResult = await fileUploader.uploadToCloudinary(req.file);
-        req.body.imageUrl = uploadResult?.secure_url;
+        req.body.imageUrl =
+            uploadResult && 'secure_url' in uploadResult
+                ? uploadResult.secure_url
+                : undefined;
     }
 
     const payload = req.body;

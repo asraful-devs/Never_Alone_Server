@@ -141,7 +141,10 @@ const updateHost = async (id: string, req: Request) => {
     // console.log(id);
     if (req.file) {
         const uploadResult = await fileUploader.uploadToCloudinary(req.file);
-        req.body.profilePhoto = uploadResult?.secure_url;
+        req.body.profilePhoto =
+            uploadResult && 'secure_url' in uploadResult
+                ? uploadResult.secure_url
+                : undefined;
     }
 
     const payload = req.body;
