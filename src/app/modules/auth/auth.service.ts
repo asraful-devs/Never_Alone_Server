@@ -20,6 +20,16 @@ const login = async (req: Request) => {
         },
     });
 
+    const role = result.role.toLocaleLowerCase();
+
+    const detailsResult = await prisma[role].findUniqueOrThrow({
+        where: {
+            email: result.email,
+        },
+    });
+
+    // console.log(detailsResult, 'mamama details result all ok');
+
     const isCorrectPassword = await bcrypt.compare(
         payload.password,
         result.password
@@ -32,7 +42,9 @@ const login = async (req: Request) => {
     const accessToken = JwtHelper.generateTokens(
         {
             parsonId: result.id,
+            name: result.name,
             email: result.email,
+            profilePhoto: detailsResult?.profilePhoto,
             role: result.role,
         },
         config.jwt.access_secret as Secret,
@@ -40,7 +52,13 @@ const login = async (req: Request) => {
     );
 
     const refreshToken = JwtHelper.generateTokens(
-        { parsonId: result.id, email: result.email, role: result.role },
+        {
+            parsonId: result.id,
+            name: result.name,
+            email: result.email,
+            profilePhoto: detailsResult?.profilePhoto,
+            role: result.role,
+        },
         config.jwt.refresh_secret as Secret,
         config.jwt.refresh_expires_in as string
     );
