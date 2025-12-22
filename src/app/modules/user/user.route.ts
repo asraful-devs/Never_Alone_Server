@@ -24,6 +24,12 @@ router.get(
     UserController.GetSingleUser
 );
 
+router.get(
+    '/get-single-user-email/:email',
+    auth(Role.ADMIN, Role.USER),
+    UserController.GetSingleUserEmail
+);
+
 // Update User
 router.patch(
     '/update-user/:id',

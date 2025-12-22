@@ -41,6 +41,17 @@ const GetSingleHost = catchAsync(async (req: Request, res: Response) => {
     });
 });
 
+// Get Single Host Controller
+const GetSingleHostEmail = catchAsync(async (req: Request, res: Response) => {
+    const result = await HostService.getSingleHostEmail(req);
+    sendResponse(res, {
+        statusCode: 200,
+        success: true,
+        message: 'Host retrieved successfully',
+        data: result,
+    });
+});
+
 // Update Host Controller
 const UpdateHost = catchAsync(async (req: Request, res: Response) => {
     const id = req.params.id;
@@ -68,6 +79,7 @@ export const HostController = {
     CreateHost,
     GetAllHost,
     GetSingleHost,
+    GetSingleHostEmail,
     UpdateHost,
     DeleteHost,
 };

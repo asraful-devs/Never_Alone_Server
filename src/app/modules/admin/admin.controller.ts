@@ -42,6 +42,17 @@ const GetSingleAdmin = catchAsync(async (req: Request, res: Response) => {
     });
 });
 
+// Get Single Admin by Email Controller
+const GetSingleAdminEmail = catchAsync(async (req: Request, res: Response) => {
+    const result = await AdminService.getSingleAdminEmail(req);
+    sendResponse(res, {
+        statusCode: 200,
+        success: true,
+        message: 'Admin retrieved successfully',
+        data: result,
+    });
+});
+
 // Update Admin Controller
 const UpdateAdmin = catchAsync(async (req: Request, res: Response) => {
     const id = req.params.id;
@@ -70,6 +81,7 @@ export const AdminController = {
     CreateAdmin,
     GetAllAdmin,
     GetSingleAdmin,
+    GetSingleAdminEmail,
     UpdateAdmin,
     DeleteAdmin,
 };

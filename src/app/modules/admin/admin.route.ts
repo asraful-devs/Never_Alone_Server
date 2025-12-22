@@ -16,6 +16,11 @@ router.get('/get-all-admin', AdminController.GetAllAdmin);
 
 router.get('/get-single-admin/:id', AdminController.GetSingleAdmin);
 
+router.get(
+    '/get-single-admin-email/:email',
+    AdminController.GetSingleAdminEmail
+);
+
 router.patch(
     '/update-admin/:id',
     fileUploader.upload.single('file'),

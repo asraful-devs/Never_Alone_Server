@@ -136,6 +136,22 @@ const getSingleHost = async (req: Request) => {
     return host;
 };
 
+// Get Single Host Service
+const getSingleHostEmail = async (req: Request) => {
+    const { email } = req.params;
+    const host = await prisma.host.findUnique({
+        where: {
+            email: email,
+            isDeleted: false,
+        },
+        include: {
+            reviews: true,
+        },
+    });
+    // console.log(host);
+    return host;
+};
+
 // Update Host Service
 const updateHost = async (id: string, req: Request) => {
     // console.log(id);
@@ -177,6 +193,7 @@ export const HostService = {
     createHost,
     getAllHost,
     getSingleHost,
+    getSingleHostEmail,
     updateHost,
     deleteHost,
 };

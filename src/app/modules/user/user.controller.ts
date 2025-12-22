@@ -44,6 +44,18 @@ const GetSingleUser = catchAsync(async (req: Request, res: Response) => {
     });
 });
 
+// Get Single User Controller
+const GetSingleUserEmail = catchAsync(async (req: Request, res: Response) => {
+    const email = req.params.email;
+    const result = await UserService.getSingleUserEmail(email);
+    sendResponse(res, {
+        statusCode: 200,
+        success: true,
+        message: 'User retrieved successfully!',
+        data: result,
+    });
+});
+
 // Update User Controller
 const UpdateUser = catchAsync(async (req: Request, res: Response) => {
     const id = req.params.id;
@@ -74,6 +86,7 @@ export const UserController = {
     CreateUser,
     GetAllUsers,
     GetSingleUser,
+    GetSingleUserEmail,
     UpdateUser,
     DeleteUser,
 };

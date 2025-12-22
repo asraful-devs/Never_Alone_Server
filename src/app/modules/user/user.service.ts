@@ -127,6 +127,17 @@ const getSingleUser = async (id: string) => {
     return result;
 };
 
+// Get Single User Service
+const getSingleUserEmail = async (email: string) => {
+    const result = await prisma.user.findUnique({
+        where: {
+            email,
+            isDeleted: false,
+        },
+    });
+    return result;
+};
+
 // Update User Service
 const updateUser = async (id: string, req: Request) => {
     if (req.file) {
@@ -170,6 +181,7 @@ export const UserService = {
     createUser,
     getAllUsers,
     getSingleUser,
+    getSingleUserEmail,
     updateUser,
     deleteUser,
 };

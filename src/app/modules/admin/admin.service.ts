@@ -136,14 +136,26 @@ const getSingleAdmin = async (req: Request) => {
     return admin;
 };
 
+const getSingleAdminEmail = async (req: Request) => {
+    const { email } = req.params;
+    const admin = await prisma.admin.findUnique({
+        where: {
+            email: email,
+            isDeleted: false,
+        },
+    });
+    return admin;
+};
+
 // Update Admin Service
 const updateAdmin = async (id: string, req: Request) => {
     console.log(id);
     if (req.file) {
         const uploadResult = await fileUploader.uploadToCloudinary(req.file);
-        req.body.profilePhoto = uploadResult && 'secure_url' in uploadResult
-            ? uploadResult.secure_url
-            : undefined;
+        req.body.profilePhoto =
+            uploadResult && 'secure_url' in uploadResult
+                ? uploadResult.secure_url
+                : undefined;
     }
 
     const payload = req.body;
@@ -176,6 +188,7 @@ export const AdminService = {
     createAdmin,
     getAllAdmin,
     getSingleAdmin,
+    getSingleAdminEmail,
     updateAdmin,
     deleteAdmin,
 };

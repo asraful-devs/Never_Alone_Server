@@ -15,6 +15,7 @@ router.post(
 router.get('/get-all-host', HostController.GetAllHost);
 
 router.get('/get-single-host/:id', HostController.GetSingleHost);
+router.get('/get-single-host-email/:email', HostController.GetSingleHostEmail);
 
 router.patch(
     '/update-host/:id',
