@@ -25,12 +25,13 @@ app.use(
     })
 );
 
-cron.schedule('* * * * *', () => {
+cron.schedule('* * * * *', async () => {
     try {
-        console.log('Node cron called at this ', new Date());
-        BookingService.cancelUnpaidBookings();
+        console.log('Node cron called at this', new Date().toISOString());
+        await BookingService.cancelUnpaidBookings();
+        console.log('Cron job completed successfully');
     } catch (err) {
-        console.error(err);
+        console.error('❌ Cron job error:', err);
     }
 });
 

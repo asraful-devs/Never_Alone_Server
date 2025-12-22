@@ -33,13 +33,26 @@ router.get(
 // Update User
 router.patch(
     '/update-user/:id',
-    auth(Role.ADMIN, Role.USER),
+    // auth(Role.ADMIN, Role.USER),
     fileUploader.upload.single('file'),
     (req: Request, res: Response, next: NextFunction) => {
         req.body = UserVailidation.updateUserValidationSchema.parse(
             JSON.parse(req.body.data)
         );
         return UserController.UpdateUser(req, res, next);
+    }
+);
+
+// Update User
+router.patch(
+    '/update-user/:email',
+    // auth(Role.ADMIN, Role.USER),
+    fileUploader.upload.single('file'),
+    (req: Request, res: Response, next: NextFunction) => {
+        req.body = UserVailidation.updateUserValidationSchema.parse(
+            JSON.parse(req.body.data)
+        );
+        return UserController.UpdateUserByEmail(req, res, next);
     }
 );
 

@@ -333,75 +333,80 @@ const getUserBookings = async (
     };
 };
 
+// booking.service.ts
+import { Prisma } from '@prisma/client';
+
 const cancelUnpaidBookings = async () => {
-    const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000);
+    try {
+        const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000);
 
-    const unPaidBookings = await prisma.booking.findMany({
-        where: {
-            createdAt: {
-                lte: thirtyMinAgo,
-            },
-            paymentStatus: 'UNPAID', // ✅ Booking এর paymentStatus
-        },
-    });
-
-    if (unPaidBookings.length === 0) {
-        return;
-    }
-
-    const bookingIdsToCancel = unPaidBookings.map((booking) => booking.id);
-
-    await prisma.$transaction(async (tnx) => {
-        await tnx.payment.deleteMany({
+        const unPaidBookings = await prisma.booking.findMany({
             where: {
-                bookingId: {
-                    in: bookingIdsToCancel,
-                },
+                createdAt: { lte: thirtyMinAgo },
+                paymentStatus: 'UNPAID',
             },
         });
 
-        await tnx.booking.deleteMany({
-            where: {
-                id: {
-                    in: bookingIdsToCancel,
-                },
-            },
-        });
+        if (unPaidBookings.length === 0) return;
 
-        const affectedEventIds = [
-            ...new Set(unPaidBookings.map((b) => b.eventId)),
-        ];
+        console.log(`📋 Canceling ${unPaidBookings.length} unpaid bookings`);
 
-        for (const eventId of affectedEventIds) {
-            const cancelledUsersForThisEvent = unPaidBookings
-                .filter((booking) => booking.eventId === eventId)
-                .map((booking) => booking.userId);
+        const bookingIdsToCancel = unPaidBookings.map((b) => b.id);
 
-            const currentEvent = await tnx.event.findUnique({
-                where: { id: eventId },
-                select: { userIds: true },
-            });
-
-            if (currentEvent) {
-                const updatedUserIds = currentEvent.userIds.filter(
-                    (userId: string) =>
-                        !cancelledUsersForThisEvent.includes(userId)
-                );
-
-                await tnx.event.update({
-                    where: { id: eventId },
-                    data: {
-                        seats: {
-                            increment: cancelledUsersForThisEvent.length,
-                        },
-                        userIds: {
-                            set: updatedUserIds,
-                        },
-                    },
+        await prisma.$transaction(
+            async (tnx) => {
+                await tnx.payment.deleteMany({
+                    where: { bookingId: { in: bookingIdsToCancel } },
                 });
+
+                await tnx.booking.deleteMany({
+                    where: { id: { in: bookingIdsToCancel } },
+                });
+
+                const affectedEventIds = [
+                    ...new Set(unPaidBookings.map((b) => b.eventId)),
+                ];
+                const events = await tnx.event.findMany({
+                    where: { id: { in: affectedEventIds } },
+                    select: { id: true, userIds: true },
+                });
+
+                await Promise.all(
+                    events.map((event) => {
+                        const cancelledUsers = unPaidBookings
+                            .filter((b) => b.eventId === event.id)
+                            .map((b) => b.userId);
+
+                        const updatedUserIds = event.userIds.filter(
+                            (userId: string) => !cancelledUsers.includes(userId)
+                        );
+
+                        return tnx.event.update({
+                            where: { id: event.id },
+                            data: {
+                                seats: { increment: cancelledUsers.length },
+                                userIds: { set: updatedUserIds },
+                            },
+                        });
+                    })
+                );
+            },
+            {
+                timeout: 5000,
             }
+        );
+
+        console.log('✅ Unpaid bookings cancelled successfully');
+    } catch (error) {
+        if (
+            error instanceof Prisma.PrismaClientKnownRequestError &&
+            error.code === 'P1001'
+        ) {
+            console.error('❌ Database unreachable. Skipping this cycle.');
+        } else {
+            console.error('❌ Error in cancelUnpaidBookings:', error);
         }
-    });
+    }
 };
 
 export const BookingService = {

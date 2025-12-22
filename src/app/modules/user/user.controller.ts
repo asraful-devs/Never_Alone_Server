@@ -69,6 +69,19 @@ const UpdateUser = catchAsync(async (req: Request, res: Response) => {
     });
 });
 
+// Update User Controller
+const UpdateUserByEmail = catchAsync(async (req: Request, res: Response) => {
+    const email = req.params.email;
+    const result = await UserService.updateUserByEmail(email, req);
+
+    sendResponse(res, {
+        statusCode: 200,
+        success: true,
+        message: 'User updated successfully!',
+        data: result,
+    });
+});
+
 // Delete User Controller
 const DeleteUser = catchAsync(async (req: Request, res: Response) => {
     const id = req.params.id;
@@ -88,5 +101,6 @@ export const UserController = {
     GetSingleUser,
     GetSingleUserEmail,
     UpdateUser,
+    UpdateUserByEmail,
     DeleteUser,
 };

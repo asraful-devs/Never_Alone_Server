@@ -162,6 +162,30 @@ const updateUser = async (id: string, req: Request) => {
     return result;
 };
 
+// Update User Service
+const updateUserByEmail = async (email: string, req: Request) => {
+    if (req.file) {
+        const uploadResult = await fileUploader.uploadToCloudinary(req.file);
+        req.body.profilePhoto =
+            uploadResult && 'secure_url' in uploadResult
+                ? uploadResult.secure_url
+                : undefined;
+    }
+
+    const payload = req.body;
+
+    const result = await prisma.user.update({
+        where: {
+            email: email,
+            isDeleted: false,
+        },
+        data: {
+            ...payload,
+        },
+    });
+    return result;
+};
+
 // Delete User Service
 
 const deleteUser = async (id: string) => {
@@ -183,5 +207,6 @@ export const UserService = {
     getSingleUser,
     getSingleUserEmail,
     updateUser,
+    updateUserByEmail,
     deleteUser,
 };
